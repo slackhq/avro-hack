@@ -1,6 +1,6 @@
 # avro-hack
 
-Apache Avro serialization library for Hack (HHVM).
+Apache Avro serialization library for Hack (Hacklang) / HHVM.
 
 ## Usage
 
