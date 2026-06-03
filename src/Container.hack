@@ -155,11 +155,11 @@ namespace Avro\Container {
   }
 
   function SchemaToJson(Schema $schema): string {
-    $data = SchemaToData($schema);
+    $data = SchemaToData($schema, dict[]);
     return \json_encode($data, \JSON_PARTIAL_OUTPUT_ON_ERROR);
   }
 
-  function SchemaToData(Schema $schema): mixed {
+  function SchemaToData(Schema $schema, dict<string, bool> $seen): mixed {
     switch ($schema->type) {
       case \Avro\SchemaType::NULL_TYPE: return 'null';
       case \Avro\SchemaType::BOOLEAN: return 'boolean';
@@ -170,9 +170,13 @@ namespace Avro\Container {
       case \Avro\SchemaType::BYTES: return 'bytes';
       case \Avro\SchemaType::STRING: return 'string';
       case \Avro\SchemaType::RECORD:
+        if (\array_key_exists($schema->name, $seen)) {
+          return $schema->name;
+        }
+        $seen[$schema->name] = true;
         $fields = vec[];
         foreach ($schema->fields as $f) {
-          $field_data = dict['name' => $f->name, 'type' => SchemaToData($f->schema)];
+          $field_data = dict['name' => $f->name, 'type' => SchemaToData($f->schema, $seen)];
           if ($f->has_default) {
             $field_data['default'] = $f->default_value;
           }
@@ -183,14 +187,14 @@ namespace Avro\Container {
         return dict['type' => 'enum', 'name' => $schema->name, 'symbols' => $schema->symbols];
       case \Avro\SchemaType::ARRAY_TYPE:
         $items = $schema->items;
-        return dict['type' => 'array', 'items' => $items !== null ? SchemaToData($items) : 'null'];
+        return dict['type' => 'array', 'items' => $items !== null ? SchemaToData($items, $seen) : 'null'];
       case \Avro\SchemaType::MAP_TYPE:
         $values = $schema->values;
-        return dict['type' => 'map', 'values' => $values !== null ? SchemaToData($values) : 'null'];
+        return dict['type' => 'map', 'values' => $values !== null ? SchemaToData($values, $seen) : 'null'];
       case \Avro\SchemaType::UNION:
         $branches = vec[];
         foreach ($schema->union as $s) {
-          $branches[] = SchemaToData($s);
+          $branches[] = SchemaToData($s, $seen);
         }
         return $branches;
       case \Avro\SchemaType::FIXED:
